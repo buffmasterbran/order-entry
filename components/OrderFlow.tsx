@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, MapPin, Package, FileText, Check, ArrowRight } from 'lucide-react';
-import { Customer, Order, Contact, Address, OrderItem } from '@/lib/supabase';
+import { User, MapPin, Package, FileText, Check, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Customer, Order, Contact, Address, OrderItem, Item } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import ContactSelector from './ContactSelector';
 import AddressSelector from './AddressSelector';
@@ -39,15 +39,31 @@ export default function OrderFlow({
   const [selectedShipAddress, setSelectedShipAddress] = useState<Address | null>(null);
   const [selectedBillAddress, setSelectedBillAddress] = useState<Address | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>(order.items || []);
+  const [allItems, setAllItems] = useState<Item[]>([]);
   const [shipDate, setShipDate] = useState<string>(order.ship_date || '');
   const [notes, setNotes] = useState<string>(order.notes || '');
   const [creditCard, setCreditCard] = useState(order.credit_card || { name: '', number: '', expiry: '', cvv: '' });
+  const [showFullCardNumber, setShowFullCardNumber] = useState(false);
 
   useEffect(() => {
     if (customer) {
       loadContactsAndAddresses();
     }
+    loadItems();
   }, [customer]);
+
+  const loadItems = async () => {
+    try {
+      const items = await storage.getItems();
+      setAllItems(items);
+    } catch (error) {
+      console.error('Error loading items:', error);
+    }
+  };
+
+  const getItem = (itemId: string): Item | undefined => {
+    return allItems.find((i) => i.id === itemId);
+  };
 
   useEffect(() => {
     // Load selected contact/addresses from order
@@ -273,6 +289,15 @@ export default function OrderFlow({
               </div>
             )}
 
+            {selectedBillAddress && (
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2">Bill To</h3>
+                <p className="text-sm">
+                  {selectedBillAddress.addrtext || `${selectedBillAddress.addr1 || ''}, ${selectedBillAddress.city || ''}, ${selectedBillAddress.state || ''} ${selectedBillAddress.zip || ''}`.trim()}
+                </p>
+              </div>
+            )}
+
             <div>
               <h3 className="font-semibold text-gray-700 mb-2">Ship Date</h3>
               <input
@@ -286,19 +311,35 @@ export default function OrderFlow({
             <div>
               <h3 className="font-semibold text-gray-700 mb-2">Items</h3>
               <div className="border rounded-lg divide-y">
-                {orderItems.map((item, idx) => (
-                  <div key={idx} className="p-3 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Item {idx + 1}</p>
-                      <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                {orderItems.map((orderItem, idx) => {
+                  const item = getItem(orderItem.item_id);
+                  const lineTotal = (orderItem.quantity || 0) * (orderItem.price || 0);
+                  return (
+                    <div key={idx} className="p-3 flex justify-between items-center">
+                      <div className="flex-1">
+                        <p className="font-medium">{item?.displayname || `Item ${idx + 1}`}</p>
+                        {item?.itemid && <p className="text-sm text-gray-600">ID: {item.itemid}</p>}
+                        {item?.color && (
+                          <p className="text-sm text-purple-600">Color: {item.color}</p>
+                        )}
+                        {orderItem.price && (
+                          <p className="text-sm text-gray-500">${orderItem.price.toFixed(2)} each</p>
+                        )}
+                        {orderItem.notes && (
+                          <p className="text-sm text-gray-600 italic mt-1">Note: {orderItem.notes}</p>
+                        )}
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className="text-sm text-gray-600">Qty: {orderItem.quantity}</p>
+                        <p className="font-semibold text-lg text-gray-900">
+                          ${lineTotal.toFixed(2)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">${getItemPrice(item).toFixed(2)}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="p-3 bg-gray-50 flex justify-between items-center border-t-2 border-gray-300">
-                  <p className="font-semibold text-lg">Total</p>
+                  <p className="font-semibold text-lg">Order Total</p>
                   <p className="font-bold text-xl">${getOrderTotal().toFixed(2)}</p>
                 </div>
               </div>
@@ -313,6 +354,89 @@ export default function OrderFlow({
                 rows={3}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-gray-700 mb-2">Credit Card Information</h3>
+              <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name on Card
+                  </label>
+                  <input
+                    type="text"
+                    value={creditCard.name || ''}
+                    onChange={(e) => setCreditCard({ ...creditCard, name: e.target.value })}
+                    placeholder="Full name"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Card Number
+                  </label>
+                  <input
+                    type="text"
+                    value={creditCard.number || ''}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                      setCreditCard({ ...creditCard, number: value });
+                    }}
+                    placeholder="1234 5678 9012 3456"
+                    maxLength={16}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Expiry (MM/YY)
+                    </label>
+                    <input
+                      type="text"
+                      value={creditCard.expiry || ''}
+                      onChange={(e) => {
+                        let value = e.target.value.replace(/\D/g, '');
+                        if (value.length >= 2) {
+                          value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                        }
+                        setCreditCard({ ...creditCard, expiry: value });
+                      }}
+                      placeholder="MM/YY"
+                      maxLength={5}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CVV
+                    </label>
+                    <input
+                      type="text"
+                      value={creditCard.cvv || ''}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setCreditCard({ ...creditCard, cvv: value });
+                      }}
+                      placeholder="123"
+                      maxLength={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                {creditCard.number && (
+                  <div className="pt-2 border-t border-gray-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">Preview: </span>
+                      <span className="text-sm text-gray-600 font-mono">
+                        {creditCard.number.length > 4
+                          ? `**** **** **** ${creditCard.number.slice(-4)}`
+                          : creditCard.number}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="pt-6 border-t flex justify-end gap-3">
