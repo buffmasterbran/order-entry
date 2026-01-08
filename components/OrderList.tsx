@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { storage } from '@/lib/storage';
 import { Order, Customer, Contact, Address, Item } from '@/lib/supabase';
-import { X, Calendar, User, Package, Trash2, Edit2, Eye, EyeOff, Upload, Filter, DollarSign } from 'lucide-react';
+import { X, Calendar, User, Package, Trash2, Edit2, Eye, EyeOff, Upload, Filter, DollarSign, Check } from 'lucide-react';
 
 interface OrderListProps {
   onClose: () => void;
@@ -370,6 +370,31 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
     }
   };
 
+  const handleSubmitOrder = async (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent clicking the order card
+    if (!confirm('Are you sure you want to submit this draft order?')) {
+      return;
+    }
+
+    try {
+      const submittedOrder: Order = {
+        ...order,
+        status: 'submitted',
+        synced_at: new Date().toISOString(),
+      };
+      await storage.saveOrder(submittedOrder);
+      await loadData(); // Reload orders
+      // Update selected order if it's the one we just submitted
+      if (selectedOrder?.id === order.id) {
+        setSelectedOrder(submittedOrder);
+      }
+      alert('Order submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting order:', error);
+      alert('Failed to submit order');
+    }
+  };
+
   const handlePushOrderToNetSuite = async () => {
     if (!selectedOrder) return;
 
@@ -664,6 +689,15 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
           >
             Back to Orders
           </button>
+          {selectedOrder.status === 'draft' && (
+            <button
+              onClick={(e) => handleSubmitOrder(selectedOrder, e)}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center gap-2"
+            >
+              <Check size={18} />
+              Submit Order
+            </button>
+          )}
           {customer?.netsuite_id && shipAddress?.netsuite_id && selectedOrder.status !== 'pushed' && (
             <button
               onClick={handlePushOrderToNetSuite}
@@ -837,6 +871,15 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
                     </div>
                   </div>
                   <div className="flex gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
+                    {order.status === 'draft' && (
+                      <button
+                        onClick={(e) => handleSubmitOrder(order, e)}
+                        className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        title="Submit order"
+                      >
+                        <Check size={18} />
+                      </button>
+                    )}
                     {onEditOrder && (
                       <button
                         onClick={(e) => handleEditOrder(order, e)}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Plus, Minus, Trash2, Barcode } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Barcode, ArrowUpDown } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { Item, OrderItem } from '@/lib/supabase';
 import { getPriceForQuantity, getPriceBreaksForLevel } from '@/lib/price-calculator';
@@ -19,6 +19,7 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
   const [allItems, setAllItems] = useState<Item[]>([]);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeMode, setBarcodeMode] = useState(true); // Default to barcode mode
+  const [sortBy, setSortBy] = useState<'none' | 'color' | 'sku'>('none');
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const barcodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -382,7 +383,21 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
 
       {/* Order Items */}
       <div>
-        <h4 className="font-semibold mb-3">Order Items ({orderItems.length})</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-semibold">Order Items ({orderItems.length})</h4>
+          <div className="flex items-center gap-2">
+            <ArrowUpDown size={16} className="text-gray-600" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'none' | 'color' | 'sku')}
+              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="none">No Sort</option>
+              <option value="color">Sort by Color</option>
+              <option value="sku">Sort by SKU</option>
+            </select>
+          </div>
+        </div>
         <div className="max-h-96 overflow-y-auto border rounded-lg p-2">
           {orderItems.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
@@ -390,7 +405,31 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {orderItems.map((orderItem) => {
+              {(() => {
+                // Sort orderItems based on selected sort option
+                let sortedItems = [...orderItems];
+                
+                if (sortBy === 'color') {
+                  sortedItems.sort((a, b) => {
+                    const itemA = getItemById(a.item_id);
+                    const itemB = getItemById(b.item_id);
+                    const colorA = itemA?.color || '';
+                    const colorB = itemB?.color || '';
+                    if (colorA === colorB) {
+                      // If same color, sort by SKU
+                      return (itemA?.itemid || '').localeCompare(itemB?.itemid || '');
+                    }
+                    return colorA.localeCompare(colorB);
+                  });
+                } else if (sortBy === 'sku') {
+                  sortedItems.sort((a, b) => {
+                    const itemA = getItemById(a.item_id);
+                    const itemB = getItemById(b.item_id);
+                    return (itemA?.itemid || '').localeCompare(itemB?.itemid || '');
+                  });
+                }
+                
+                return sortedItems.map((orderItem) => {
                 const item = getItemById(orderItem.item_id);
                 if (!item) return null;
                 return (
@@ -474,7 +513,8 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                     </div>
                   </div>
                 );
-              })}
+                });
+              })()}
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, MapPin, Package, FileText, Check, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { Customer, Order, Contact, Address, OrderItem, Item } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
@@ -44,6 +44,7 @@ export default function OrderFlow({
   const [notes, setNotes] = useState<string>(order.notes || '');
   const [creditCard, setCreditCard] = useState(order.credit_card || { name: '', number: '', expiry: '', cvv: '' });
   const [showFullCardNumber, setShowFullCardNumber] = useState(false);
+  const hasUnsavedChanges = useRef(false);
 
   useEffect(() => {
     if (customer) {
@@ -87,6 +88,27 @@ export default function OrderFlow({
     }
   }, [order, customer]);
 
+  // Track if there are unsaved changes
+  useEffect(() => {
+    hasUnsavedChanges.current = orderItems.length > 0 || selectedContact !== null || selectedShipAddress !== null;
+  }, [orderItems, selectedContact, selectedShipAddress]);
+
+  // Warn user before leaving page if there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges.current) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   const loadContactsAndAddresses = async () => {
     if (!customer) return;
     try {
@@ -125,8 +147,41 @@ export default function OrderFlow({
       credit_card: creditCard,
       status: 'draft' as const,
     };
+    hasUnsavedChanges.current = false; // Clear the flag since we're completing
     await storage.saveOrder(updatedOrder);
     onComplete(updatedOrder);
+  };
+
+  const handleCancel = () => {
+    // Check if there are items or changes that would be lost
+    if (hasUnsavedChanges.current) {
+      const message = orderItems.length > 0
+        ? 'You have items in this order. Are you sure you want to cancel? The order will be saved as a draft.'
+        : 'You have unsaved changes. Are you sure you want to cancel?';
+      
+      if (!confirm(message)) {
+        return; // User chose to stay
+      }
+
+      // Save as draft before canceling
+      const draftOrder: Order = {
+        ...order,
+        contact_id: selectedContact?.id,
+        ship_address_id: selectedShipAddress?.id,
+        bill_address_id: selectedBillAddress?.id || selectedShipAddress?.id,
+        items: orderItems,
+        ship_date: shipDate,
+        notes: notes,
+        credit_card: creditCard,
+        status: 'draft' as const,
+      };
+      storage.saveOrder(draftOrder).catch((error) => {
+        console.error('Error saving draft order:', error);
+      });
+    }
+    
+    hasUnsavedChanges.current = false;
+    onCancel();
   };
 
   const steps: { id: Step; label: string; icon: any }[] = [
@@ -158,7 +213,7 @@ export default function OrderFlow({
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Create Order</h1>
             <button
-              onClick={onCancel}
+              onClick={handleCancel}
               className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 font-medium"
             >
               Cancel

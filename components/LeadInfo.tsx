@@ -18,10 +18,41 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
 
   useEffect(() => {
     loadLeads();
-  }, []);
+  }, [isOnline]);
 
   const loadLeads = async () => {
-    const allLeads = await storage.getLeads();
+    let allLeads: Lead[] = [];
+    
+    // Fetch leads from Supabase if online (to get all leads from all users)
+    // Otherwise fall back to local IndexedDB
+    if (isOnline) {
+      try {
+        const response = await fetch('/api/supabase/leads');
+        if (response.ok) {
+          const data = await response.json();
+          allLeads = data.leads || [];
+          
+          // Also save to local storage for offline access
+          for (const lead of allLeads) {
+            try {
+              await storage.saveLead(lead);
+            } catch (error) {
+              // Continue if one fails
+              console.warn('Failed to save lead to local storage:', error);
+            }
+          }
+        } else {
+          // Fall back to local if Supabase fetch fails
+          allLeads = await storage.getLeads();
+        }
+      } catch (error) {
+        console.error('Error fetching leads from Supabase, using local:', error);
+        allLeads = await storage.getLeads();
+      }
+    } else {
+      allLeads = await storage.getLeads();
+    }
+    
     // Sort by created_at descending (newest first)
     const sorted = allLeads.sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -65,9 +96,48 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
   };
 
   const handleDeleteLead = async (leadId: string) => {
-    if (confirm('Are you sure you want to delete this lead?')) {
-      await storage.deleteLead(leadId);
+    if (!confirm('Are you sure you want to delete this lead?')) {
+      return;
+    }
+
+    try {
+      let deleteSuccess = false;
+
+      // Delete from Supabase when online
+      if (isOnline) {
+        try {
+          const response = await fetch(`/api/supabase/leads/${encodeURIComponent(leadId)}`, {
+            method: 'DELETE',
+          });
+
+          if (response.ok) {
+            deleteSuccess = true;
+          } else {
+            const error = await response.json().catch(() => ({}));
+            console.error('Failed to delete lead from Supabase:', error);
+            alert('Failed to delete lead from server. Please try again.');
+            return; // Don't delete locally if server deletion failed
+          }
+        } catch (error) {
+          console.error('Error deleting lead from Supabase:', error);
+          alert('Failed to delete lead from server. Please try again.');
+          return; // Don't delete locally if server deletion failed
+        }
+      } else {
+        // If offline, we can only delete locally
+        deleteSuccess = true;
+      }
+
+      // Only delete from local storage if Supabase deletion succeeded (or we're offline)
+      if (deleteSuccess) {
+        await storage.deleteLead(leadId);
+      }
+
+      // Reload leads to refresh the UI
       await loadLeads();
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      alert('Failed to delete lead. Please try again.');
     }
   };
 
@@ -120,7 +190,7 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
 
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h3 className="text-lg font-semibold mb-4">
-          Leads ({filteredLeads.length})
+          All Leads ({filteredLeads.length} {leads.length !== filteredLeads.length ? `of ${leads.length}` : ''})
         </h3>
         {filteredLeads.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
