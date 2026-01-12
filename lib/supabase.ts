@@ -118,7 +118,12 @@ export interface Lead {
   email?: string;
   phone?: string;
   source?: string; // Lead source: PPAI, Surf Expo, PGA, Atlanta Gift, Vegas Gift, etc.
-  notes?: string;
+  engagement_level?: 'Hot' | 'Warm' | 'Cold'; // Determines personal vs AI follow-up
+  interest_timeline?: 'Immediate' | '1-2 months' | 'Long-term';
+  product_interest?: string; // Specific products they showed interest in
+  competitor_info?: string; // Current suppliers like Corkcicle
+  notes?: string; // Detailed context
+  follow_up_type?: 'Personal Touch' | 'AI Sequence';
   created_by?: string; // Username of user who created the lead
   synced_at?: string;
   created_at: string;

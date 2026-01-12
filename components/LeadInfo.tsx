@@ -149,12 +149,43 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
       lead.email?.toLowerCase().includes(query) ||
       lead.phone?.includes(query) ||
       lead.source?.toLowerCase().includes(query) ||
+      lead.engagement_level?.toLowerCase().includes(query) ||
+      lead.interest_timeline?.toLowerCase().includes(query) ||
+      lead.product_interest?.toLowerCase().includes(query) ||
+      lead.competitor_info?.toLowerCase().includes(query) ||
+      lead.follow_up_type?.toLowerCase().includes(query) ||
       lead.notes?.toLowerCase().includes(query)
     );
   });
 
   return (
     <div>
+      {/* Dialog Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Add New Lead</h3>
+              <button
+                onClick={() => setShowForm(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close dialog"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <LeadForm 
+                onSave={handleLeadCreated} 
+                onCancel={() => setShowForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div>
@@ -162,25 +193,18 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
             <p className="text-gray-600">Quickly add and manage leads</p>
           </div>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => setShowForm(true)}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
             <Plus size={20} />
-            {showForm ? 'Cancel' : 'New Lead'}
+            New Lead
           </button>
         </div>
-
-        {showForm && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Add New Lead</h3>
-            <LeadForm onSave={handleLeadCreated} />
-          </div>
-        )}
 
         <div className="mb-4">
           <input
             type="text"
-            placeholder="Search leads by name, company, email, phone, source, or notes..."
+            placeholder="Search leads by name, company, email, phone, source, engagement level, timeline, product interest, competitor info, follow-up type, or notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -205,11 +229,25 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <h4 className="font-semibold text-lg">{lead.name}</h4>
                       {lead.source && (
                         <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
                           {lead.source}
+                        </span>
+                      )}
+                      {lead.engagement_level && (
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          lead.engagement_level === 'Hot' ? 'bg-red-100 text-red-800' :
+                          lead.engagement_level === 'Warm' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {lead.engagement_level}
+                        </span>
+                      )}
+                      {lead.follow_up_type && (
+                        <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+                          {lead.follow_up_type}
                         </span>
                       )}
                     </div>
@@ -229,6 +267,21 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
                         <div className="flex items-center gap-2">
                           <Phone size={16} />
                           <span>{lead.phone}</span>
+                        </div>
+                      )}
+                      {lead.interest_timeline && (
+                        <div className="text-gray-700">
+                          <span className="font-medium">Timeline: </span>{lead.interest_timeline}
+                        </div>
+                      )}
+                      {lead.product_interest && (
+                        <div className="text-gray-700">
+                          <span className="font-medium">Product Interest: </span>{lead.product_interest}
+                        </div>
+                      )}
+                      {lead.competitor_info && (
+                        <div className="text-gray-700">
+                          <span className="font-medium">Competitor Info: </span>{lead.competitor_info}
                         </div>
                       )}
                       {lead.notes && (
