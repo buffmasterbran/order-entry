@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       // Simple search across a few common fields
       query = query.or(
-        `name.ilike.%${search}%,company.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,source.ilike.%${search}%,notes.ilike.%${search}%`
+        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,company.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,source.ilike.%${search}%,notes.ilike.%${search}%`
       );
     }
 

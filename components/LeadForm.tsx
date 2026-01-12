@@ -61,10 +61,10 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const fullName = [formData.firstName, formData.lastName].filter(Boolean).join(' ').trim();
     const lead: Lead = {
       id: `lead-${Date.now()}`,
-      name: fullName,
+      first_name: formData.firstName,
+      last_name: formData.lastName || undefined,
       company: formData.company || undefined,
       email: formData.email || undefined,
       phone: formData.phone || undefined,

@@ -143,8 +143,11 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
 
   const filteredLeads = leads.filter((lead) => {
     const query = searchQuery.toLowerCase();
+    const fullName = [lead.first_name, lead.last_name].filter(Boolean).join(' ').toLowerCase();
     return (
-      lead.name.toLowerCase().includes(query) ||
+      lead.first_name.toLowerCase().includes(query) ||
+      lead.last_name?.toLowerCase().includes(query) ||
+      fullName.includes(query) ||
       lead.company?.toLowerCase().includes(query) ||
       lead.email?.toLowerCase().includes(query) ||
       lead.phone?.includes(query) ||
@@ -230,7 +233,9 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <h4 className="font-semibold text-lg">{lead.name}</h4>
+                      <h4 className="font-semibold text-lg">
+                        {[lead.first_name, lead.last_name].filter(Boolean).join(' ')}
+                      </h4>
                       {lead.source && (
                         <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
                           {lead.source}

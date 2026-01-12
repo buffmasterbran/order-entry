@@ -113,7 +113,8 @@ export interface OrderItem {
 
 export interface Lead {
   id: string;
-  name: string;
+  first_name: string;
+  last_name?: string;
   company?: string;
   email?: string;
   phone?: string;
