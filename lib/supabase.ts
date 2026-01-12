@@ -119,7 +119,7 @@ export interface Lead {
   phone?: string;
   source?: string; // Lead source: PPAI, Surf Expo, PGA, Atlanta Gift, Vegas Gift, etc.
   engagement_level?: 'Hot' | 'Warm' | 'Cold'; // Determines personal vs AI follow-up
-  interest_timeline?: 'Immediate' | '1-2 months' | 'Long-term';
+  interest_timeline?: string; // Freeform text for interest timeline
   product_interest?: string; // Specific products they showed interest in
   competitor_info?: string; // Current suppliers like Corkcicle
   notes?: string; // Detailed context

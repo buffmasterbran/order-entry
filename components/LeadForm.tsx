@@ -17,7 +17,6 @@ const LEAD_SOURCES = [
 ] as const;
 
 const ENGAGEMENT_LEVELS = ['Hot', 'Warm', 'Cold'] as const;
-const INTEREST_TIMELINES = ['Immediate', '1-2 months', 'Long-term'] as const;
 const FOLLOW_UP_TYPES = ['Personal Touch', 'AI Sequence'] as const;
 
 export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
@@ -71,7 +70,7 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
       phone: formData.phone || undefined,
       source: formData.source || undefined,
       engagement_level: (formData.engagementLevel as 'Hot' | 'Warm' | 'Cold') || undefined,
-      interest_timeline: (formData.interestTimeline as 'Immediate' | '1-2 months' | 'Long-term') || undefined,
+      interest_timeline: formData.interestTimeline || undefined,
       product_interest: formData.productInterest || undefined,
       competitor_info: formData.competitorInfo || undefined,
       notes: formData.notes || undefined,
@@ -187,41 +186,35 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Engagement Level
-          </label>
-          <select
-            value={formData.engagementLevel}
-            onChange={(e) => setFormData({ ...formData, engagementLevel: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select engagement level...</option>
-            {ENGAGEMENT_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Interest Timeline
-          </label>
-          <select
-            value={formData.interestTimeline}
-            onChange={(e) => setFormData({ ...formData, interestTimeline: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select timeline...</option>
-            {INTEREST_TIMELINES.map((timeline) => (
-              <option key={timeline} value={timeline}>
-                {timeline}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Engagement Level
+        </label>
+        <select
+          value={formData.engagementLevel}
+          onChange={(e) => setFormData({ ...formData, engagementLevel: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Select engagement level...</option>
+          {ENGAGEMENT_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Interest Timeline
+        </label>
+        <input
+          type="text"
+          value={formData.interestTimeline}
+          onChange={(e) => setFormData({ ...formData, interestTimeline: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="e.g., Immediate, 1-2 months, Long-term, Q2 2024..."
+        />
       </div>
 
       <div>
