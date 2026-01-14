@@ -125,6 +125,8 @@ export interface Lead {
   competitor_info?: string; // Current suppliers like Corkcicle
   notes?: string; // Detailed context
   follow_up_type?: 'Personal Touch' | 'AI Sequence';
+  send_to_rep?: 'Yes' | 'No'; // Send to rep yes/no
+  billing_zipcode?: string; // Billing zipcode
   created_by?: string; // Username of user who created the lead
   synced_at?: string;
   created_at: string;

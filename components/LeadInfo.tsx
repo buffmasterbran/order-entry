@@ -150,52 +150,55 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
   };
 
   const handleCopyAll = () => {
-    // Helper function to clean field values (remove newlines that would break rows)
-    const cleanField = (field: any): string => {
-      const str = String(field || '');
-      // Replace newlines and carriage returns with spaces to keep data in one row
-      return str.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/\t/g, ' ');
+    // Helper function to clean field values for TSV (tab-separated values)
+    // TSV is more reliable for Google Sheets - tabs separate columns, newlines separate rows
+    const cleanTsvField = (field: any): string => {
+      if (field === null || field === undefined) {
+        return '';
+      }
+      const str = String(field);
+      // Replace tabs with spaces (tabs are column separators, can't be in field values)
+      // Replace newlines and carriage returns with spaces (newlines are row separators)
+      return str.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, ' ');
     };
 
     // Create TSV (tab-separated values) rows (no headers, just data)
-    // TSV works better with Google Sheets paste operation
-    const tsvRows = filteredLeads.map(lead => [
-      lead.id,
-      lead.first_name || '',
-      lead.last_name || '',
-      lead.company || '',
-      lead.email || '',
-      lead.phone || '',
-      lead.source || '',
-      lead.engagement_level || '',
-      lead.interest_timeline || '',
-      lead.product_interest || '',
-      lead.competitor_info || '',
-      lead.notes || '',
-      lead.follow_up_type || '',
-      lead.created_by || '',
-      lead.synced_at || '',
-      lead.created_at || '',
-    ].map(cleanField).join('\t'));
+    // Order: id, first_name, last_name, company, email, phone, source, engagement_level, 
+    //        interest_timeline, product_interest, competitor_info, notes, follow_up_type, 
+    //        send_to_rep, billing_zipcode, created_by, synced_at, created_at
+    const tsvRows = filteredLeads.map(lead => {
+      const row = [
+        lead.id || '',
+        lead.first_name || '',
+        lead.last_name || '',
+        lead.company || '',
+        lead.email || '',
+        lead.phone || '',
+        lead.source || '',
+        lead.engagement_level || '',
+        lead.interest_timeline || '',
+        lead.product_interest || '',
+        lead.competitor_info || '',
+        lead.notes || '',
+        lead.follow_up_type || '',
+        lead.send_to_rep || '',
+        lead.billing_zipcode || '',
+        lead.created_by || '',
+        lead.synced_at || '',
+        lead.created_at || '',
+      ];
+      // Join with tabs - each field in its own column
+      return row.map(cleanTsvField).join('\t');
+    });
 
     const tsvContent = tsvRows.join('\n');
 
-    // Use ClipboardItem API with multiple formats for better Google Sheets compatibility
-    const clipboardItem = new ClipboardItem({
-      'text/plain': new Blob([tsvContent], { type: 'text/plain' }),
-      'text/html': new Blob([tsvContent], { type: 'text/html' }),
-    });
-
-    navigator.clipboard.write([clipboardItem]).then(() => {
+    // Use simple writeText for reliable Google Sheets compatibility
+    navigator.clipboard.writeText(tsvContent).then(() => {
       handleCopySuccess();
-    }).catch(() => {
-      // Fallback to writeText if ClipboardItem API fails
-      navigator.clipboard.writeText(tsvContent).then(() => {
-        handleCopySuccess();
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-        alert('Failed to copy to clipboard');
-      });
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
     });
   };
 

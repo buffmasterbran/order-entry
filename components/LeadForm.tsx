@@ -33,6 +33,8 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
     competitorInfo: '',
     notes: '',
     followUpType: '',
+    sendToRep: '',
+    billingZipcode: '',
   });
 
   const formatPhoneNumber = (value: string): string => {
@@ -75,6 +77,8 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
       competitor_info: formData.competitorInfo || undefined,
       notes: formData.notes || undefined,
       follow_up_type: (formData.followUpType as 'Personal Touch' | 'AI Sequence') || undefined,
+      send_to_rep: (formData.sendToRep as 'Yes' | 'No') || undefined,
+      billing_zipcode: formData.billingZipcode || undefined,
       created_at: new Date().toISOString(),
     };
     onSave(lead);
@@ -92,6 +96,8 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
       competitorInfo: '',
       notes: '',
       followUpType: '',
+      sendToRep: '',
+      billingZipcode: '',
     });
   };
 
@@ -259,6 +265,35 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Send to Rep
+          </label>
+          <select
+            value={formData.sendToRep}
+            onChange={(e) => setFormData({ ...formData, sendToRep: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select...</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Billing Zipcode
+          </label>
+          <input
+            type="text"
+            value={formData.billingZipcode}
+            onChange={(e) => setFormData({ ...formData, billingZipcode: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter zipcode"
+          />
+        </div>
       </div>
 
       <div>

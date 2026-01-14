@@ -36,6 +36,8 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
     competitorInfo: lead.competitor_info || '',
     notes: lead.notes || '',
     followUpType: lead.follow_up_type || '',
+    sendToRep: lead.send_to_rep || '',
+    billingZipcode: lead.billing_zipcode || '',
   });
 
   const formatPhoneNumber = (value: string): string => {
@@ -75,6 +77,8 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
         competitor_info: formData.competitorInfo || undefined,
         notes: formData.notes || undefined,
         follow_up_type: formData.followUpType ? (formData.followUpType as 'Personal Touch' | 'AI Sequence') : undefined,
+        send_to_rep: formData.sendToRep ? (formData.sendToRep as 'Yes' | 'No') : undefined,
+        billing_zipcode: formData.billingZipcode || undefined,
       };
       await onSave(updatedLead);
       // onClose is called in handleLeadUpdated after save completes
@@ -86,16 +90,22 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
 
   const handleCopy = () => {
     // Format as TSV (tab-separated values) row for Google Sheets
-    // Order matches: id, first_name, last_name, company, email, phone, source, engagement_level, interest_timeline, product_interest, competitor_info, notes, follow_up_type, created_by, synced_at, created_at
-    const cleanField = (field: any): string => {
-      const str = String(field || '');
-      // Replace newlines and carriage returns with spaces, remove tabs
-      return str.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/\t/g, ' ');
+    // Order matches: id, first_name, last_name, company, email, phone, source, engagement_level, 
+    //                interest_timeline, product_interest, competitor_info, notes, follow_up_type, 
+    //                send_to_rep, billing_zipcode, created_by, synced_at, created_at
+    const cleanTsvField = (field: any): string => {
+      if (field === null || field === undefined) {
+        return '';
+      }
+      const str = String(field);
+      // Replace tabs with spaces (tabs are column separators, can't be in field values)
+      // Replace newlines and carriage returns with spaces (newlines are row separators)
+      return str.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, ' ');
     };
 
-    const tsvRow = [
-      lead.id,
-      formData.firstName,
+    const row = [
+      lead.id || '',
+      formData.firstName || '',
       formData.lastName || '',
       formData.company || '',
       formData.email || '',
@@ -107,27 +117,21 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
       formData.competitorInfo || '',
       formData.notes || '',
       formData.followUpType || '',
+      formData.sendToRep || '',
+      formData.billingZipcode || '',
       lead.created_by || '',
       lead.synced_at || '',
-      lead.created_at,
-    ].map(cleanField).join('\t');
+      lead.created_at || '',
+    ];
+    // Join with tabs - each field in its own column
+    const tsvRow = row.map(cleanTsvField).join('\t');
 
-    // Use ClipboardItem API with multiple formats for better Google Sheets compatibility
-    const clipboardItem = new ClipboardItem({
-      'text/plain': new Blob([tsvRow], { type: 'text/plain' }),
-      'text/html': new Blob([tsvRow], { type: 'text/html' }),
-    });
-
-    navigator.clipboard.write([clipboardItem]).then(() => {
+    // Use simple writeText for reliable Google Sheets compatibility
+    navigator.clipboard.writeText(tsvRow).then(() => {
       if (onCopy) onCopy();
-    }).catch(() => {
-      // Fallback to writeText if ClipboardItem API fails
-      navigator.clipboard.writeText(tsvRow).then(() => {
-        if (onCopy) onCopy();
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-        alert('Failed to copy to clipboard');
-      });
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
     });
   };
 
@@ -325,6 +329,36 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Current suppliers (e.g., Corkcicle)..."
               />
+            </div>
+
+            {/* Send to Rep and Billing Zipcode */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Send to Rep
+                </label>
+                <select
+                  value={formData.sendToRep}
+                  onChange={(e) => setFormData({ ...formData, sendToRep: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select...</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Billing Zipcode
+                </label>
+                <input
+                  type="text"
+                  value={formData.billingZipcode}
+                  onChange={(e) => setFormData({ ...formData, billingZipcode: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter zipcode"
+                />
+              </div>
             </div>
 
             {/* Notes */}
