@@ -112,11 +112,22 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
       lead.created_at,
     ].map(cleanField).join('\t');
 
-    navigator.clipboard.writeText(tsvRow).then(() => {
+    // Use ClipboardItem API with multiple formats for better Google Sheets compatibility
+    const clipboardItem = new ClipboardItem({
+      'text/plain': new Blob([tsvRow], { type: 'text/plain' }),
+      'text/html': new Blob([tsvRow], { type: 'text/html' }),
+    });
+
+    navigator.clipboard.write([clipboardItem]).then(() => {
       if (onCopy) onCopy();
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-      alert('Failed to copy to clipboard');
+    }).catch(() => {
+      // Fallback to writeText if ClipboardItem API fails
+      navigator.clipboard.writeText(tsvRow).then(() => {
+        if (onCopy) onCopy();
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+      });
     });
   };
 

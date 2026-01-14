@@ -82,13 +82,13 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
         );
         
         if (confirmed) {
-          // Increment quantity by 3
-          const updated = [...orderItems];
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            quantity: updated[existingIndex].quantity + 3,
-          };
-          onUpdate(updated);
+        // Increment quantity by 3
+        const updated = [...orderItems];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + 3,
+        };
+        onUpdate(updated);
         }
       } else {
         // Add new item (start at 3)
@@ -251,8 +251,8 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
         <div className="flex items-center gap-4">
           <div className="text-lg flex items-center gap-4">
             <div>
-              <span className="text-gray-600">Subtotal:</span>
-              <span className="font-bold text-xl ml-2">${calculateSubtotal().toFixed(2)}</span>
+            <span className="text-gray-600">Subtotal:</span>
+            <span className="font-bold text-xl ml-2">${calculateSubtotal().toFixed(2)}</span>
             </div>
             <div className="border-l pl-4">
               <span className="text-gray-600">Pieces:</span>
@@ -276,44 +276,44 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
       <div className="mb-4 relative">
         {barcodeMode ? (
           <div className="p-4 bg-green-50 border-2 border-green-300 rounded-lg">
-            <label className="block text-sm font-medium text-green-800 mb-2">
-              Scan Barcode
-            </label>
-            <input
-              ref={barcodeInputRef}
-              type="text"
-              value={barcodeInput}
+          <label className="block text-sm font-medium text-green-800 mb-2">
+            Scan Barcode
+          </label>
+          <input
+            ref={barcodeInputRef}
+            type="text"
+            value={barcodeInput}
               onChange={handleBarcodeInput}
               onKeyDown={handleBarcodeKeyDown}
               placeholder="Scan barcode (auto-detects completion)"
               className="w-full px-4 py-3 border-2 border-green-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-lg"
-              autoFocus
-            />
-            <p className="text-xs text-green-700 mt-2">
-              Barcode scanner will automatically submit on scan
-            </p>
-          </div>
+            autoFocus
+          />
+          <p className="text-xs text-green-700 mt-2">
+            Barcode scanner will automatically submit on scan
+          </p>
+        </div>
         ) : (
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search items by ID or name..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              onFocus={() => {
-                if (searchQuery.trim() && searchResults.length > 0) {
-                  setShowSearchResults(true);
-                }
-              }}
-              onBlur={() => {
-                // Delay hiding to allow clicks on results
-                setTimeout(() => setShowSearchResults(false), 200);
-              }}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search items by ID or name..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            onFocus={() => {
+              if (searchQuery.trim() && searchResults.length > 0) {
+                setShowSearchResults(true);
+              }
+            }}
+            onBlur={() => {
+              // Delay hiding to allow clicks on results
+              setTimeout(() => setShowSearchResults(false), 200);
+            }}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         )}
         
         {/* Search Results Dropdown */}
@@ -354,7 +354,7 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                         return wholesale !== undefined && (
                           <div className={`text-xs ${isMatchingPriceLevel('4') ? 'bg-yellow-200 font-bold px-2 py-1 rounded' : 'text-blue-600'}`}>
                             Wholesale (4): <span className="font-medium">${wholesale.toFixed(2)}</span>
-                          </div>
+                        </div>
                         );
                       })()}
                       {(() => {
@@ -362,7 +362,7 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                         return promoDist !== undefined && (
                           <div className={`text-xs ${isMatchingPriceLevel('14') ? 'bg-yellow-200 font-bold px-2 py-1 rounded' : 'text-orange-600'}`}>
                             Promo Distributor (14): <span className="font-medium">${promoDist.toFixed(2)}</span>
-                          </div>
+                        </div>
                         );
                       })()}
                     </div>
@@ -430,33 +430,33 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                 }
                 
                 return sortedItems.map((orderItem) => {
-                const item = getItemById(orderItem.item_id);
-                if (!item) return null;
-                return (
-                  <div
-                    key={orderItem.item_id}
+              const item = getItemById(orderItem.item_id);
+              if (!item) return null;
+              return (
+                <div
+                  key={orderItem.item_id}
                     className="p-2.5 border border-gray-200 rounded-lg bg-white"
-                  >
+                >
                     <div className="flex justify-between items-start mb-1.5">
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm truncate">{item.displayname}</div>
                         <div className="text-xs text-gray-600">
                           {item.itemid}
-                        </div>
+                          </div>
                         {item.color && (
                           <div className="text-xs text-purple-600 font-medium mt-0.5">
                             Color: {item.color}
                           </div>
                         )}
-                      </div>
-                      <button
-                        onClick={() => handleRemoveItem(orderItem.item_id)}
+                    </div>
+                    <button
+                      onClick={() => handleRemoveItem(orderItem.item_id)}
                         className="p-2 hover:bg-red-100 rounded flex-shrink-0 ml-2"
                         title="Remove item"
-                      >
+                    >
                         <Trash2 size={20} className="text-red-600" />
-                      </button>
-                    </div>
+                    </button>
+                  </div>
                     <div className="mb-1.5">
                       {(() => {
                         const priceLevel = customerPriceLevel || '4';
@@ -469,31 +469,31 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                       })()}
                     </div>
                     <div className="flex items-center gap-1.5 mb-2">
-                      <button
-                        onClick={() => handleQuantityChange(orderItem.item_id, -3)}
-                        className="p-1 bg-gray-200 rounded hover:bg-gray-300"
-                      >
+                    <button
+                      onClick={() => handleQuantityChange(orderItem.item_id, -3)}
+                      className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                    >
                         <Minus size={14} />
-                      </button>
-                      <input
-                        type="number"
-                        min="0"
-                        value={orderItem.quantity}
-                        onChange={(e) => handleQuantityInputChange(orderItem.item_id, e.target.value)}
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      value={orderItem.quantity}
+                      onChange={(e) => handleQuantityInputChange(orderItem.item_id, e.target.value)}
                         className="font-semibold w-14 text-center border border-gray-300 rounded px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button
-                        onClick={() => handleQuantityChange(orderItem.item_id, 3)}
-                        className="p-1 bg-gray-200 rounded hover:bg-gray-300"
-                      >
+                    />
+                    <button
+                      onClick={() => handleQuantityChange(orderItem.item_id, 3)}
+                      className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                    >
                         <Plus size={14} />
-                      </button>
-                      {orderItem.price && (
+                    </button>
+                    {orderItem.price && (
                         <span className="ml-auto text-xs font-semibold text-gray-700">
-                          ${(orderItem.quantity * orderItem.price).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
+                        ${(orderItem.quantity * orderItem.price).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                     <div>
                       <textarea
                         id={`item-note-${orderItem.item_id}`}
@@ -511,8 +511,8 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                         className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
                       />
                     </div>
-                  </div>
-                );
+                </div>
+              );
                 });
               })()}
             </div>

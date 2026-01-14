@@ -180,11 +180,22 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
 
     const tsvContent = tsvRows.join('\n');
 
-    navigator.clipboard.writeText(tsvContent).then(() => {
+    // Use ClipboardItem API with multiple formats for better Google Sheets compatibility
+    const clipboardItem = new ClipboardItem({
+      'text/plain': new Blob([tsvContent], { type: 'text/plain' }),
+      'text/html': new Blob([tsvContent], { type: 'text/html' }),
+    });
+
+    navigator.clipboard.write([clipboardItem]).then(() => {
       handleCopySuccess();
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-      alert('Failed to copy to clipboard');
+    }).catch(() => {
+      // Fallback to writeText if ClipboardItem API fails
+      navigator.clipboard.writeText(tsvContent).then(() => {
+        handleCopySuccess();
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+      });
     });
   };
 
