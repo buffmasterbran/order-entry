@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Lead } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import LeadForm from './LeadForm';
-import { Plus, Trash2, Mail, Phone, FileText } from 'lucide-react';
+import LeadEditDialog from './LeadEditDialog';
+import { Plus, Trash2, Mail, Phone, FileText, Copy } from 'lucide-react';
 
 interface LeadInfoProps {
   username?: string | null;
@@ -14,7 +15,9 @@ interface LeadInfoProps {
 export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     loadLeads();
@@ -95,6 +98,96 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
     setShowForm(false);
   };
 
+  const handleLeadUpdated = async (updatedLead: Lead) => {
+    try {
+      // Save to local storage first
+      await storage.saveLead(updatedLead);
+      
+      // Best-effort push to Supabase when online
+      if (isOnline) {
+        try {
+          const leadToSync = {
+            ...updatedLead,
+            synced_at: new Date().toISOString(),
+          };
+          console.log('Syncing lead to Supabase:', leadToSync);
+          const res = await fetch('/api/supabase/leads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lead: leadToSync,
+            }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error('Failed to sync updated lead to Supabase:', err);
+            const errorMessage = err?.error || err?.message || 'Unknown error';
+            alert(`Failed to sync updated lead to server: ${errorMessage}. Changes saved locally.`);
+          } else {
+            // Mark as synced locally
+            await storage.saveLead({ ...updatedLead, synced_at: new Date().toISOString() });
+          }
+        } catch (e) {
+          console.error('Failed to sync updated lead to Supabase:', e);
+          alert('Failed to sync updated lead to server. Changes saved locally.');
+        }
+      }
+      
+      // Reload leads to refresh the UI
+      await loadLeads();
+      // Close the dialog
+      setSelectedLead(null);
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      alert('Failed to save lead. Please try again.');
+    }
+  };
+
+  const handleCopySuccess = () => {
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const handleCopyAll = () => {
+    // Helper function to clean field values (remove newlines that would break rows)
+    const cleanField = (field: any): string => {
+      const str = String(field || '');
+      // Replace newlines and carriage returns with spaces to keep data in one row
+      return str.replace(/\n/g, ' ').replace(/\r/g, ' ').replace(/\t/g, ' ');
+    };
+
+    // Create TSV (tab-separated values) rows (no headers, just data)
+    // TSV works better with Google Sheets paste operation
+    const tsvRows = filteredLeads.map(lead => [
+      lead.id,
+      lead.first_name || '',
+      lead.last_name || '',
+      lead.company || '',
+      lead.email || '',
+      lead.phone || '',
+      lead.source || '',
+      lead.engagement_level || '',
+      lead.interest_timeline || '',
+      lead.product_interest || '',
+      lead.competitor_info || '',
+      lead.notes || '',
+      lead.follow_up_type || '',
+      lead.created_by || '',
+      lead.synced_at || '',
+      lead.created_at || '',
+    ].map(cleanField).join('\t'));
+
+    const tsvContent = tsvRows.join('\n');
+
+    navigator.clipboard.writeText(tsvContent).then(() => {
+      handleCopySuccess();
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
+    });
+  };
+
   const handleDeleteLead = async (leadId: string) => {
     if (!confirm('Are you sure you want to delete this lead?')) {
       return;
@@ -163,7 +256,24 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
 
   return (
     <div>
-      {/* Dialog Modal */}
+      {/* Copy Success Toast */}
+      {copySuccess && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          Copied to clipboard!
+        </div>
+      )}
+
+      {/* Edit Lead Dialog */}
+      {selectedLead && (
+        <LeadEditDialog
+          lead={selectedLead}
+          onSave={handleLeadUpdated}
+          onClose={() => setSelectedLead(null)}
+          onCopy={handleCopySuccess}
+        />
+      )}
+
+      {/* Add Lead Dialog Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -195,13 +305,23 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
             <h2 className="text-2xl font-bold">Lead Info</h2>
             <p className="text-gray-600">Quickly add and manage leads</p>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus size={20} />
-            New Lead
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyAll}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+              title="Copy all leads as CSV"
+            >
+              <Copy size={20} />
+              Copy All
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Plus size={20} />
+              New Lead
+            </button>
+          </div>
         </div>
 
         <div className="mb-4">
@@ -228,7 +348,8 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
             {filteredLeads.map((lead) => (
               <div
                 key={lead.id}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={() => setSelectedLead(lead)}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -302,7 +423,10 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleDeleteLead(lead.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteLead(lead.id);
+                    }}
                     className="p-2 hover:bg-red-100 rounded ml-4"
                     title="Delete lead"
                   >
