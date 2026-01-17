@@ -194,13 +194,35 @@ export default function Home() {
   };
 
   const handleEditOrder = async (order: Order) => {
-    // Load the customer for this order
-    const customer = await storage.getCustomer(order.customer_id);
-    if (customer) {
-      setSelectedCustomer(customer);
-      setCurrentOrder(order);
-    } else {
-      alert('Could not load customer for this order');
+    try {
+      console.log('handleEditOrder called with order:', {
+        orderId: order.id,
+        customerId: order.customer_id,
+        itemsCount: order.items.length
+      });
+
+      if (!order.customer_id) {
+        console.error('Order missing customer_id:', order);
+        alert('Cannot edit order: Order is missing customer information');
+        return;
+      }
+
+      // Load the customer for this order
+      const customer = await storage.getCustomer(order.customer_id);
+      if (customer) {
+        console.log('Customer loaded for order:', customer.companyname);
+        setSelectedCustomer(customer);
+        setCurrentOrder(order);
+      } else {
+        console.error('Customer not found for order:', {
+          orderId: order.id,
+          customerId: order.customer_id
+        });
+        alert(`Could not load customer for this order. Customer ID: ${order.customer_id}`);
+      }
+    } catch (error) {
+      console.error('Error in handleEditOrder:', error);
+      alert(`Failed to open order for editing: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -582,7 +604,12 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <CustomerSearch onSelect={handleCustomerSelect} salesRepId={salesRepId} />
+          <CustomerSearch 
+            onSelect={handleCustomerSelect} 
+            salesRepId={salesRepId}
+            isOnline={isOnline}
+            onEditOrder={handleEditOrder}
+          />
         </>
       ) : currentOrder ? (
         <OrderFlow

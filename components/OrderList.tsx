@@ -594,7 +594,7 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
                       <p className="text-sm text-gray-600">Qty: {orderItem.quantity}</p>
                       <p className="font-semibold text-lg text-gray-900">
                         ${lineTotal.toFixed(2)}
-                      </p>
+                        </p>
                     </div>
                   </div>
                 );

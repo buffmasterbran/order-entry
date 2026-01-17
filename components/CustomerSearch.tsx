@@ -3,19 +3,23 @@
 import { useState, useEffect } from 'react';
 import { Search, Plus, User } from 'lucide-react';
 import { storage } from '@/lib/storage';
-import { Customer } from '@/lib/supabase';
+import { Customer, Order } from '@/lib/supabase';
 import CustomerForm from './CustomerForm';
+import OrderHistoryDialog from './OrderHistoryDialog';
 
 interface CustomerSearchProps {
   onSelect: (customer: Customer) => void;
   salesRepId?: string | null; // If provided, filter customers by this sales rep. If null/undefined, show all.
+  isOnline?: boolean;
+  onEditOrder?: (order: Order) => void;
 }
 
-export default function CustomerSearch({ onSelect, salesRepId }: CustomerSearchProps) {
+export default function CustomerSearch({ onSelect, salesRepId, isOnline = true, onEditOrder }: CustomerSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [orderHistoryCustomer, setOrderHistoryCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     loadCustomers();
@@ -112,12 +116,14 @@ export default function CustomerSearch({ onSelect, salesRepId }: CustomerSearchP
       ) : (
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {customers.map((customer) => (
-            <button
+            <div
               key={customer.id}
-              onClick={() => onSelect(customer)}
-              className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              className="flex items-center gap-2 p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors"
             >
-              <div className="flex items-center gap-3">
+              <button
+                onClick={() => onSelect(customer)}
+                className="flex-1 text-left flex items-center gap-3"
+              >
                 <div className="bg-blue-100 rounded-full p-2">
                   <User size={20} className="text-blue-600" />
                 </div>
@@ -127,10 +133,28 @@ export default function CustomerSearch({ onSelect, salesRepId }: CustomerSearchP
                     {customer.entityid} {customer.email && `• ${customer.email}`}
                   </div>
                 </div>
-              </div>
-            </button>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOrderHistoryCustomer(customer);
+                }}
+                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-blue-100 hover:text-blue-600 rounded-lg transition-colors font-medium"
+                title="View order history"
+              >
+                Order History
+              </button>
+            </div>
           ))}
         </div>
+      )}
+      {orderHistoryCustomer && (
+        <OrderHistoryDialog
+          customer={orderHistoryCustomer}
+          onClose={() => setOrderHistoryCustomer(null)}
+          onEditOrder={onEditOrder}
+          isOnline={isOnline}
+        />
       )}
     </div>
   );

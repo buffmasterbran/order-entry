@@ -14,11 +14,14 @@ export class NetSuiteClient {
       const error = await response.json();
       const errorMessage = error.details ? `${error.error}: ${error.details}` : error.error || 'NetSuite API error';
       console.error('NetSuite client error:', error);
+      console.error('Query that failed:', query);
       throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    return data.items || [];
+    const items = data.items || [];
+    console.log(`NetSuite query returned ${items.length} items`);
+    return items;
   }
 
   async getCustomers(): Promise<any[]> {
@@ -87,6 +90,50 @@ export class NetSuiteClient {
 
   async getAllAddresses(): Promise<any[]> {
     const query = `SELECT ab.entity AS customer_id, c.entityid AS customer_name, ea.addressee, ea.addr1, ea.addr2, ea.city, ea.state, ea.zip, ea.country, ab.label, ab.defaultshipping, ab.defaultbilling FROM customeraddressbook ab JOIN customer c ON c.id = ab.entity JOIN entityaddress ea ON ea.nkey = ab.addressbookaddress WHERE c.custentity_customer_category != 28`;
+    return this.query(query);
+  }
+
+  async getCustomerOrders(customerNetSuiteId: string): Promise<any[]> {
+    // Fetch sales orders from NetSuite for a specific customer
+    // Note: Pagination is handled by the API route via URL parameters, not SQL LIMIT
+    // Note: shipaddress and billaddress are not exposed in SuiteQL, so we omit them
+    const query = `SELECT 
+      t.id,
+      t.tranid AS order_number,
+      t.trandate AS order_date,
+      BUILTIN.DF(t.status) AS order_status,
+      t.memo,
+      t.shipdate AS ship_date,
+      t.entity AS customer_id,
+      t.createddate AS created_at,
+      t.lastmodifieddate AS last_modified
+    FROM Transaction t
+    WHERE t.type = 'SalesOrd'
+      AND t.entity = ${customerNetSuiteId}
+    ORDER BY t.trandate DESC`;
+    return this.query(query);
+  }
+
+  async getOrderItems(orderNetSuiteId: string): Promise<any[]> {
+    // Fetch line items for a specific sales order
+    // Join with Item table to get item details, and filter out mainline and hidden lines
+    const query = `SELECT 
+      tl.id,
+      tl.transaction AS order_id,
+      tl.item AS item_id,
+      tl.quantity AS quantity,
+      tl.rate AS price,
+      tl.memo AS item_notes,
+      i.itemid AS item_sku,
+      i.displayname AS item_name,
+      i.custitem_item_color AS item_color,
+      i.custitem_item_size AS item_size
+    FROM TransactionLine tl
+    LEFT JOIN Item i ON i.id = tl.item
+    WHERE tl.transaction = ${orderNetSuiteId}
+      AND tl.MainLine = 'F'
+      AND tl.item IS NOT NULL
+    ORDER BY tl.LineSequenceNumber ASC`;
     return this.query(query);
   }
 }

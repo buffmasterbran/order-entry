@@ -99,6 +99,8 @@ export interface Order {
   };
   status: 'draft' | 'submitted' | 'synced' | 'pushed';
   netsuite_id?: string; // NetSuite sales order ID
+  netsuite_status?: string; // NetSuite status string (e.g., "Sales Order : Pending Fulfillment")
+  netsuite_document_number?: string; // NetSuite document number/tranid (e.g., "SO62575")
   created_by?: string; // Username of user who created the order
   synced_at?: string;
   created_at: string;
@@ -109,6 +111,8 @@ export interface OrderItem {
   quantity: number;
   price?: number;
   notes?: string; // Optional notes for this specific item
+  color?: string; // Item color from NetSuite
+  size?: string; // Item size from NetSuite
 }
 
 export interface Lead {
