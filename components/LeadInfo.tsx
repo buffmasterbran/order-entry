@@ -165,7 +165,8 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
     // Create TSV (tab-separated values) rows (no headers, just data)
     // Order: id, first_name, last_name, company, email, phone, source, engagement_level, 
     //        interest_timeline, product_interest, competitor_info, notes, follow_up_type, 
-    //        send_to_rep, billing_zipcode, created_by, synced_at, created_at
+    //        billing_zipcode, created_by, synced_at, created_at
+    // Note: send_to_rep is no longer included as "Send to Rep" is now part of follow_up_type
     const tsvRows = filteredLeads.map(lead => {
       const row = [
         lead.id || '',
@@ -181,7 +182,6 @@ export default function LeadInfo({ username, isOnline }: LeadInfoProps) {
         lead.competitor_info || '',
         lead.notes || '',
         lead.follow_up_type || '',
-        lead.send_to_rep || '',
         lead.billing_zipcode || '',
         lead.created_by || '',
         lead.synced_at || '',

@@ -90,7 +90,8 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
     // Format as TSV (tab-separated values) row for Google Sheets
     // Order matches: id, first_name, last_name, company, email, phone, source, engagement_level, 
     //                interest_timeline, product_interest, competitor_info, notes, follow_up_type, 
-    //                send_to_rep, billing_zipcode, created_by, synced_at, created_at
+    //                billing_zipcode, created_by, synced_at, created_at
+    // Note: send_to_rep is no longer included as "Send to Rep" is now part of follow_up_type
     const cleanTsvField = (field: any): string => {
       if (field === null || field === undefined) {
         return '';
@@ -115,7 +116,6 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
       formData.competitorInfo || '',
       formData.notes || '',
       formData.followUpType || '',
-      lead.send_to_rep || '', // Preserve existing value for backward compatibility
       formData.billingZipcode || '',
       lead.created_by || '',
       lead.synced_at || '',
