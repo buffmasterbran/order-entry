@@ -128,8 +128,8 @@ export interface Lead {
   product_interest?: string; // Specific products they showed interest in
   competitor_info?: string; // Current suppliers like Corkcicle
   notes?: string; // Detailed context
-  follow_up_type?: 'Personal Touch' | 'AI Sequence';
-  send_to_rep?: 'Yes' | 'No'; // Send to rep yes/no
+  follow_up_type?: 'Personal Touch' | 'AI Sequence' | 'Send to Rep';
+  send_to_rep?: 'Yes' | 'No'; // Send to rep yes/no (deprecated - use follow_up_type instead)
   billing_zipcode?: string; // Billing zipcode
   created_by?: string; // Username of user who created the lead
   synced_at?: string;

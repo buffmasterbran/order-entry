@@ -20,7 +20,7 @@ const LEAD_SOURCES = [
 ] as const;
 
 const ENGAGEMENT_LEVELS = ['Hot', 'Warm', 'Cold'] as const;
-const FOLLOW_UP_TYPES = ['Personal Touch', 'AI Sequence'] as const;
+const FOLLOW_UP_TYPES = ['Personal Touch', 'AI Sequence', 'Send to Rep'] as const;
 
 export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEditDialogProps) {
   const [formData, setFormData] = useState({
@@ -36,7 +36,6 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
     competitorInfo: lead.competitor_info || '',
     notes: lead.notes || '',
     followUpType: lead.follow_up_type || '',
-    sendToRep: lead.send_to_rep || '',
     billingZipcode: lead.billing_zipcode || '',
   });
 
@@ -76,8 +75,7 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
         product_interest: formData.productInterest || undefined,
         competitor_info: formData.competitorInfo || undefined,
         notes: formData.notes || undefined,
-        follow_up_type: formData.followUpType ? (formData.followUpType as 'Personal Touch' | 'AI Sequence') : undefined,
-        send_to_rep: formData.sendToRep ? (formData.sendToRep as 'Yes' | 'No') : undefined,
+      follow_up_type: formData.followUpType ? (formData.followUpType as 'Personal Touch' | 'AI Sequence' | 'Send to Rep') : undefined,
         billing_zipcode: formData.billingZipcode || undefined,
       };
       await onSave(updatedLead);
@@ -117,7 +115,7 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
       formData.competitorInfo || '',
       formData.notes || '',
       formData.followUpType || '',
-      formData.sendToRep || '',
+      lead.send_to_rep || '', // Preserve existing value for backward compatibility
       formData.billingZipcode || '',
       lead.created_by || '',
       lead.synced_at || '',
@@ -331,34 +329,18 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
               />
             </div>
 
-            {/* Send to Rep and Billing Zipcode */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Send to Rep
-                </label>
-                <select
-                  value={formData.sendToRep}
-                  onChange={(e) => setFormData({ ...formData, sendToRep: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select...</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Billing Zipcode
-                </label>
-                <input
-                  type="text"
-                  value={formData.billingZipcode}
-                  onChange={(e) => setFormData({ ...formData, billingZipcode: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter zipcode"
-                />
-              </div>
+            {/* Billing Zipcode */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Billing Zipcode
+              </label>
+              <input
+                type="text"
+                value={formData.billingZipcode}
+                onChange={(e) => setFormData({ ...formData, billingZipcode: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter zipcode"
+              />
             </div>
 
             {/* Notes */}
