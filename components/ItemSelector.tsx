@@ -22,6 +22,7 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeMode, setBarcodeMode] = useState(true); // Default to barcode mode
   const [sortBy, setSortBy] = useState<'none' | 'color' | 'sku'>('none');
+  const [groupBy, setGroupBy] = useState<'size' | 'color' | 'none'>('size'); // Group by size, color, or none
   const [inventory, setInventory] = useState<Record<string, number>>({}); // itemid -> quantity available
   const [loadingInventory, setLoadingInventory] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -537,17 +538,56 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
       <div>
         <div className="flex items-center justify-between mb-3">
           <h4 className="font-semibold">Order Items ({orderItems.length})</h4>
-          <div className="flex items-center gap-2">
-            <ArrowUpDown size={16} className="text-gray-600" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'none' | 'color' | 'sku')}
-              className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="none">No Sort</option>
-              <option value="color">Sort by Color</option>
-              <option value="sku">Sort by SKU</option>
-            </select>
+          <div className="flex items-center gap-4">
+            {/* Group By Radio Buttons */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Group by:</span>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="groupBy"
+                  value="size"
+                  checked={groupBy === 'size'}
+                  onChange={(e) => setGroupBy(e.target.value as 'size' | 'color' | 'none')}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm">Size</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="groupBy"
+                  value="color"
+                  checked={groupBy === 'color'}
+                  onChange={(e) => setGroupBy(e.target.value as 'size' | 'color' | 'none')}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm">Color</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="groupBy"
+                  value="none"
+                  checked={groupBy === 'none'}
+                  onChange={(e) => setGroupBy(e.target.value as 'size' | 'color' | 'none')}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm">None</span>
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <ArrowUpDown size={16} className="text-gray-600" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'none' | 'color' | 'sku')}
+                className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="none">No Sort</option>
+                <option value="color">Sort by Color</option>
+                <option value="sku">Sort by SKU</option>
+              </select>
+            </div>
           </div>
         </div>
         <div className="max-h-96 overflow-y-auto border rounded-lg p-2">
@@ -581,48 +621,173 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
                   });
                 }
                 
-                // Group items by size
-                const itemsBySize = new Map<string, typeof sortedItems>();
-                const noSizeItems: typeof sortedItems = [];
+                // Group items based on selected grouping option
+                if (groupBy === 'none') {
+                  // No grouping - just render all items
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {sortedItems.map((orderItem) => {
+                        const item = getItemById(orderItem.item_id);
+                        if (!item) return null;
+                        return (
+                          <div
+                            key={orderItem.item_id}
+                            className="p-2.5 border border-gray-200 rounded-lg bg-white"
+                          >
+                            <div className="flex justify-between items-start mb-1.5">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm truncate">{item.displayname}</div>
+                                <div className="text-xs text-gray-600">
+                                  {item.itemid}
+                                  {loadingInventory && !(item.itemid in inventory) && (
+                                    <span className="ml-2 text-gray-400 italic">Loading inventory...</span>
+                                  )}
+                                  {inventory[item.itemid] !== undefined && (
+                                    <span className={`ml-2 font-medium ${
+                                      inventory[item.itemid] > 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                      • Qty Available: {inventory[item.itemid]}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.color && (
+                                  <div className="text-xs text-purple-600 font-medium mt-0.5">
+                                    Color: {item.color}
+                                  </div>
+                                )}
+                                {item.size && (
+                                  <div className="text-xs text-blue-600 font-medium mt-0.5">
+                                    Size: {item.size}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleRemoveItem(orderItem.item_id)}
+                                className="p-2 hover:bg-red-100 rounded flex-shrink-0 ml-2"
+                                title="Remove item"
+                              >
+                                <Trash2 size={20} className="text-red-600" />
+                              </button>
+                            </div>
+                            <div className="mb-1.5">
+                              {(() => {
+                                const priceLevel = customerPriceLevel || '4';
+                                const price = getPriceAtQuantity(item, priceLevel);
+                                return price !== undefined && (
+                                  <div className={`text-xs px-1.5 py-0.5 rounded inline-block ${isMatchingPriceLevel(priceLevel) ? 'bg-yellow-200 font-bold' : 'bg-gray-100'}`}>
+                                    ${price.toFixed(2)} each
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <button
+                                onClick={() => handleQuantityChange(orderItem.item_id, -3)}
+                                className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                value={orderItem.quantity}
+                                onChange={(e) => handleQuantityInputChange(orderItem.item_id, e.target.value)}
+                                className="font-semibold w-14 text-center border border-gray-300 rounded px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <button
+                                onClick={() => handleQuantityChange(orderItem.item_id, 3)}
+                                className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                              >
+                                <Plus size={14} />
+                              </button>
+                              {orderItem.price && (
+                                <span className="ml-auto text-xs font-semibold text-gray-700">
+                                  ${(orderItem.quantity * orderItem.price).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <textarea
+                                id={`item-note-${orderItem.item_id}`}
+                                value={orderItem.notes || ''}
+                                onChange={(e) => {
+                                  const updatedItems = orderItems.map((oi) =>
+                                    oi.item_id === orderItem.item_id
+                                      ? { ...oi, notes: e.target.value || undefined }
+                                      : oi
+                                  );
+                                  onUpdate(updatedItems);
+                                }}
+                                placeholder="Note (optional)..."
+                                rows={2}
+                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+                
+                // Group items by selected attribute (size or color)
+                const itemsByGroup = new Map<string, typeof sortedItems>();
+                const noGroupItems: typeof sortedItems = [];
                 
                 sortedItems.forEach(orderItem => {
                   const item = getItemById(orderItem.item_id);
                   if (!item) return;
                   
-                  const size = item.size || 'No Size';
-                  if (size === 'No Size') {
-                    noSizeItems.push(orderItem);
+                  let groupValue: string;
+                  let groupLabel: string;
+                  
+                  if (groupBy === 'size') {
+                    groupValue = item.size || 'No Size';
+                    groupLabel = 'Size';
+                  } else { // groupBy === 'color'
+                    groupValue = item.color || 'No Color';
+                    groupLabel = 'Color';
+                  }
+                  
+                  if (groupValue === `No ${groupLabel}`) {
+                    noGroupItems.push(orderItem);
                   } else {
-                    if (!itemsBySize.has(size)) {
-                      itemsBySize.set(size, []);
+                    if (!itemsByGroup.has(groupValue)) {
+                      itemsByGroup.set(groupValue, []);
                     }
-                    itemsBySize.get(size)!.push(orderItem);
+                    itemsByGroup.get(groupValue)!.push(orderItem);
                   }
                 });
                 
-                // Sort sizes alphabetically, but put "No Size" at the end
-                const sortedSizes = Array.from(itemsBySize.keys()).sort();
-                if (noSizeItems.length > 0) {
-                  sortedSizes.push('No Size');
+                // Sort groups alphabetically, but put "No [Group]" at the end
+                const sortedGroups = Array.from(itemsByGroup.keys()).sort();
+                if (noGroupItems.length > 0) {
+                  sortedGroups.push(`No ${groupBy === 'size' ? 'Size' : 'Color'}`);
                 }
                 
-                return sortedSizes.map((size, sizeIndex) => {
-                  const itemsInSize = size === 'No Size' ? noSizeItems : itemsBySize.get(size)!;
+                const groupLabel = groupBy === 'size' ? 'Size' : 'Color';
+                
+                return sortedGroups.map((groupValue, groupIndex) => {
+                  const itemsInGroup = groupValue.startsWith('No ') ? noGroupItems : itemsByGroup.get(groupValue)!;
                   
                   return (
-                    <div key={size} className={sizeIndex > 0 ? 'mt-4' : ''}>
-                      {/* Size Group Header */}
+                    <div key={groupValue} className={groupIndex > 0 ? 'mt-4' : ''}>
+                      {/* Group Header */}
                       <div className="mb-2 flex items-center gap-2">
                         <div className="flex-1 border-t border-gray-300"></div>
-                        <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold uppercase tracking-wide">
-                          Size: {size}
+                        <div className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
+                          groupBy === 'size' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {groupLabel}: {groupValue}
                         </div>
                         <div className="flex-1 border-t border-gray-300"></div>
                       </div>
                       
-                      {/* Items in this size group */}
+                      {/* Items in this group */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {itemsInSize.map((orderItem) => {
+                        {itemsInGroup.map((orderItem) => {
                           const item = getItemById(orderItem.item_id);
                           if (!item) return null;
                           return (
