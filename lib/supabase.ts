@@ -74,6 +74,7 @@ export interface Item {
   itemid: string;
   displayname: string;
   color?: string; // Item color name from custitem_item_color
+  size?: string; // Item size from custitem_item_size
   price_breaks?: {
     [priceLevel: string]: PriceBreak[]; // e.g., "1": [{quantity: 1, price: 44.00}], "14": [{quantity: 1, price: 44.00}, {quantity: 24, price: 30.80}, ...]
   };

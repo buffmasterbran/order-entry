@@ -70,6 +70,7 @@ export class NetSuiteClient {
       i.displayname,
       i.itemtype,
       i.custitem_item_color,
+      i.custitem_item_size,
       ip.pricelevel,
       ip.priceqty AS price_break_qty,
       ip.price

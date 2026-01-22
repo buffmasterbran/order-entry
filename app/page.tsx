@@ -389,6 +389,7 @@ export default function Home() {
             itemid: row.itemid || '',
             displayname: row.displayname || '',
             color: row.custitem_item_color || undefined,
+            size: row.custitem_item_size || undefined,
             price_breaks: {},
             quantityavailable: 0,
             synced_at: new Date().toISOString(),

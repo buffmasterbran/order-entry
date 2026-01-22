@@ -418,29 +418,68 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
         {/* Search Results Dropdown */}
         {showSearchResults && searchResults.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto">
-            {searchResults.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleAddItem(item)}
-                className="w-full text-left p-3 border-b border-gray-100 hover:bg-blue-50 hover:border-blue-300 transition-colors last:border-b-0"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-semibold">{item.displayname}</div>
-                    <div className="text-sm text-gray-600">
-                      {item.itemid}
-                      {item.color && <span className="ml-2 text-purple-600 font-medium">• {item.color}</span>}
-                      {loadingInventory && !(item.itemid in inventory) && (
-                        <span className="ml-2 text-gray-400 italic">Loading inventory...</span>
-                      )}
-                      {inventory[item.itemid] !== undefined && (
-                        <span className={`ml-2 font-medium ${
-                          inventory[item.itemid] > 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          • Qty Available: {inventory[item.itemid]}
-                        </span>
-                      )}
+            {(() => {
+              // Group search results by size
+              const resultsBySize = new Map<string, typeof searchResults>();
+              const noSizeResults: typeof searchResults = [];
+              
+              searchResults.forEach(item => {
+                const size = item.size || 'No Size';
+                if (size === 'No Size') {
+                  noSizeResults.push(item);
+                } else {
+                  if (!resultsBySize.has(size)) {
+                    resultsBySize.set(size, []);
+                  }
+                  resultsBySize.get(size)!.push(item);
+                }
+              });
+              
+              // Sort sizes alphabetically, but put "No Size" at the end
+              const sortedSizes = Array.from(resultsBySize.keys()).sort();
+              if (noSizeResults.length > 0) {
+                sortedSizes.push('No Size');
+              }
+              
+              return sortedSizes.map((size, sizeIndex) => {
+                const itemsInSize = size === 'No Size' ? noSizeResults : resultsBySize.get(size)!;
+                
+                return (
+                  <div key={size}>
+                    {/* Size Group Header */}
+                    {sizeIndex > 0 && (
+                      <div className="border-t border-gray-200 my-1"></div>
+                    )}
+                    <div className="sticky top-0 bg-gray-50 px-3 py-1.5 border-b border-gray-200">
+                      <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                        Size: {size} ({itemsInSize.length} {itemsInSize.length === 1 ? 'item' : 'items'})
+                      </span>
                     </div>
+                    
+                    {itemsInSize.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleAddItem(item)}
+                        className="w-full text-left p-3 border-b border-gray-100 hover:bg-blue-50 hover:border-blue-300 transition-colors last:border-b-0"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="font-semibold">{item.displayname}</div>
+                            <div className="text-sm text-gray-600">
+                              {item.itemid}
+                              {item.color && <span className="ml-2 text-purple-600 font-medium">• {item.color}</span>}
+                              {item.size && <span className="ml-2 text-blue-600 font-medium">• Size: {item.size}</span>}
+                              {loadingInventory && !(item.itemid in inventory) && (
+                                <span className="ml-2 text-gray-400 italic">Loading inventory...</span>
+                              )}
+                              {inventory[item.itemid] !== undefined && (
+                                <span className={`ml-2 font-medium ${
+                                  inventory[item.itemid] > 0 ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  • Qty Available: {inventory[item.itemid]}
+                                </span>
+                              )}
+                            </div>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {(() => {
                         const msrp = getPriceAtQuantity(item, '1');
@@ -475,11 +514,15 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
                         );
                       })()}
                     </div>
+                          </div>
+                          <Plus size={18} className="text-blue-600 ml-2" />
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                  <Plus size={18} className="text-blue-600 ml-2" />
-                </div>
-              </button>
-            ))}
+                );
+              });
+            })()}
           </div>
         )}
         
@@ -513,7 +556,7 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
               No items in order yet. Search or scan to add items.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-4">
               {(() => {
                 // Sort orderItems based on selected sort option
                 let sortedItems = [...orderItems];
@@ -538,14 +581,55 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
                   });
                 }
                 
-                return sortedItems.map((orderItem) => {
-              const item = getItemById(orderItem.item_id);
-              if (!item) return null;
-              return (
-                <div
-                  key={orderItem.item_id}
-                    className="p-2.5 border border-gray-200 rounded-lg bg-white"
-                >
+                // Group items by size
+                const itemsBySize = new Map<string, typeof sortedItems>();
+                const noSizeItems: typeof sortedItems = [];
+                
+                sortedItems.forEach(orderItem => {
+                  const item = getItemById(orderItem.item_id);
+                  if (!item) return;
+                  
+                  const size = item.size || 'No Size';
+                  if (size === 'No Size') {
+                    noSizeItems.push(orderItem);
+                  } else {
+                    if (!itemsBySize.has(size)) {
+                      itemsBySize.set(size, []);
+                    }
+                    itemsBySize.get(size)!.push(orderItem);
+                  }
+                });
+                
+                // Sort sizes alphabetically, but put "No Size" at the end
+                const sortedSizes = Array.from(itemsBySize.keys()).sort();
+                if (noSizeItems.length > 0) {
+                  sortedSizes.push('No Size');
+                }
+                
+                return sortedSizes.map((size, sizeIndex) => {
+                  const itemsInSize = size === 'No Size' ? noSizeItems : itemsBySize.get(size)!;
+                  
+                  return (
+                    <div key={size} className={sizeIndex > 0 ? 'mt-4' : ''}>
+                      {/* Size Group Header */}
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="flex-1 border-t border-gray-300"></div>
+                        <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold uppercase tracking-wide">
+                          Size: {size}
+                        </div>
+                        <div className="flex-1 border-t border-gray-300"></div>
+                      </div>
+                      
+                      {/* Items in this size group */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {itemsInSize.map((orderItem) => {
+                          const item = getItemById(orderItem.item_id);
+                          if (!item) return null;
+                          return (
+                            <div
+                              key={orderItem.item_id}
+                              className="p-2.5 border border-gray-200 rounded-lg bg-white"
+                            >
                     <div className="flex justify-between items-start mb-1.5">
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm truncate">{item.displayname}</div>
@@ -565,6 +649,11 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
                         {item.color && (
                           <div className="text-xs text-purple-600 font-medium mt-0.5">
                             Color: {item.color}
+                          </div>
+                        )}
+                        {item.size && (
+                          <div className="text-xs text-blue-600 font-medium mt-0.5">
+                            Size: {item.size}
                           </div>
                         )}
                     </div>
@@ -631,7 +720,11 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
                       />
                     </div>
                 </div>
-              );
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
                 });
               })()}
             </div>
