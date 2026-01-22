@@ -770,6 +770,9 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
                 return sortedGroups.map((groupValue, groupIndex) => {
                   const itemsInGroup = groupValue.startsWith('No ') ? noGroupItems : itemsByGroup.get(groupValue)!;
                   
+                  // Calculate total pieces for this group
+                  const totalPieces = itemsInGroup.reduce((sum, orderItem) => sum + orderItem.quantity, 0);
+                  
                   return (
                     <div key={groupValue} className={groupIndex > 0 ? 'mt-4' : ''}>
                       {/* Group Header */}
@@ -780,7 +783,7 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
                             ? 'bg-blue-100 text-blue-800' 
                             : 'bg-purple-100 text-purple-800'
                         }`}>
-                          {groupLabel}: {groupValue}
+                          {groupLabel}: {groupValue} • Total Pcs: {totalPieces}
                         </div>
                         <div className="flex-1 border-t border-gray-300"></div>
                       </div>
