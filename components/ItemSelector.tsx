@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Search, Plus, Minus, Trash2, Barcode, ArrowUpDown } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { Item, OrderItem } from '@/lib/supabase';
 import { getPriceForQuantity, getPriceBreaksForLevel } from '@/lib/price-calculator';
+import { netsuiteClient } from '@/lib/netsuite-client';
 
 interface ItemSelectorProps {
   orderItems: OrderItem[];
   onUpdate: (items: OrderItem[]) => void;
   customerPriceLevel?: string; // Customer's price level (e.g., "1", "3", "4", "14")
+  isOnline?: boolean; // Whether the app is online and can fetch from NetSuite
 }
 
-export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel }: ItemSelectorProps) {
+export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel, isOnline = true }: ItemSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Item[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -20,6 +22,8 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeMode, setBarcodeMode] = useState(true); // Default to barcode mode
   const [sortBy, setSortBy] = useState<'none' | 'color' | 'sku'>('none');
+  const [inventory, setInventory] = useState<Record<string, number>>({}); // itemid -> quantity available
+  const [loadingInventory, setLoadingInventory] = useState(false);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const barcodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -50,6 +54,56 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
     setAllItems(items);
   };
 
+  // Fetch inventory for items by their SKUs (itemid)
+  const fetchInventory = useCallback(async (itemSkus: string[]) => {
+    if (itemSkus.length === 0) return;
+    if (!isOnline) return; // Only fetch inventory when online
+    
+    // Filter out SKUs we already have inventory for
+    const skusToFetch = itemSkus.filter(sku => !(sku in inventory));
+    if (skusToFetch.length === 0) return;
+
+    console.log('Fetching inventory for SKUs:', skusToFetch);
+    setLoadingInventory(true);
+    try {
+      const inventoryData = await netsuiteClient.getItemInventory(skusToFetch, 1);
+      console.log('Inventory data received:', inventoryData);
+      const inventoryMap: Record<string, number> = {};
+      
+      inventoryData.forEach((item: any) => {
+        if (item.itemid && item.quantityavailable !== null && item.quantityavailable !== undefined) {
+          inventoryMap[item.itemid] = parseFloat(item.quantityavailable) || 0;
+        }
+      });
+      
+      console.log('Inventory map:', inventoryMap);
+      setInventory(prev => {
+        const updated = { ...prev, ...inventoryMap };
+        console.log('Updated inventory state:', updated);
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+      // Don't show error to user, just log it - inventory is nice to have but not critical
+    } finally {
+      setLoadingInventory(false);
+    }
+  }, [inventory, isOnline]);
+
+  // Fetch inventory for items in the order
+  useEffect(() => {
+    const itemSkus = orderItems
+      .map(oi => {
+        const item = allItems.find(i => i.id === oi.item_id);
+        return item?.itemid;
+      })
+      .filter(Boolean) as string[];
+    
+    if (itemSkus.length > 0) {
+      fetchInventory(itemSkus);
+    }
+  }, [orderItems, allItems, fetchInventory]);
+
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.trim() === '') {
@@ -61,6 +115,12 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
     const results = await storage.searchItems(query);
     setSearchResults(results);
     setShowSearchResults(true);
+    
+    // Fetch inventory for search results
+    const skus = results.map(item => item.itemid).filter(Boolean);
+    if (skus.length > 0) {
+      fetchInventory(skus);
+    }
   };
 
   const handleBarcodeScan = async (barcode: string) => {
@@ -331,6 +391,16 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                     <div className="text-sm text-gray-600">
                       {item.itemid}
                       {item.color && <span className="ml-2 text-purple-600 font-medium">• {item.color}</span>}
+                      {loadingInventory && !(item.itemid in inventory) && (
+                        <span className="ml-2 text-gray-400 italic">Loading inventory...</span>
+                      )}
+                      {inventory[item.itemid] !== undefined && (
+                        <span className={`ml-2 font-medium ${
+                          inventory[item.itemid] > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          • Qty Available: {inventory[item.itemid]}
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {(() => {
@@ -442,7 +512,17 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel 
                         <div className="font-semibold text-sm truncate">{item.displayname}</div>
                         <div className="text-xs text-gray-600">
                           {item.itemid}
-                          </div>
+                          {loadingInventory && !(item.itemid in inventory) && (
+                            <span className="ml-2 text-gray-400 italic">Loading inventory...</span>
+                          )}
+                          {inventory[item.itemid] !== undefined && (
+                            <span className={`ml-2 font-medium ${
+                              inventory[item.itemid] > 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              • Qty Available: {inventory[item.itemid]}
+                            </span>
+                          )}
+                        </div>
                         {item.color && (
                           <div className="text-xs text-purple-600 font-medium mt-0.5">
                             Color: {item.color}

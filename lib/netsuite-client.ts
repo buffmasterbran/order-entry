@@ -136,6 +136,28 @@ export class NetSuiteClient {
     ORDER BY tl.LineSequenceNumber ASC`;
     return this.query(query);
   }
+
+  async getItemInventory(itemSkus: string[], locationId: number = 1): Promise<any[]> {
+    // Fetch inventory availability for items by SKU
+    // locationId = 1 is typically the main warehouse location
+    if (itemSkus.length === 0) {
+      return [];
+    }
+    
+    // Build IN clause with quoted SKUs
+    const skuList = itemSkus.map(sku => `'${sku.replace(/'/g, "''")}'`).join(', ');
+    
+    const query = `SELECT 
+      i.itemid, 
+      i.id, 
+      loc.quantityavailable
+    FROM item i
+    JOIN aggregateItemLocation loc ON i.id = loc.item 
+    WHERE i.itemid IN (${skuList}) 
+      AND loc.location = ${locationId}`;
+    
+    return this.query(query);
+  }
 }
 
 export const netsuiteClient = new NetSuiteClient();

@@ -301,6 +301,7 @@ export default function OrderFlow({
               orderItems={orderItems}
               onUpdate={setOrderItems}
               customerPriceLevel={customer?.pricelevel}
+              isOnline={isOnline}
             />
             {orderItems.length > 0 && (
               <div className="mt-6 pt-6 border-t flex justify-end">
