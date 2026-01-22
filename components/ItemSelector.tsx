@@ -54,25 +54,64 @@ export default function ItemSelector({ orderItems, onUpdate, customerPriceLevel,
     setAllItems(items);
   };
 
+  // Helper function to get root SKU (removes -LSR or -PERS suffix for kit items)
+  const getRootSku = (sku: string): string => {
+    if (sku.endsWith('-LSR') || sku.endsWith('-PERS')) {
+      return sku.replace(/-(LSR|PERS)$/, '');
+    }
+    return sku;
+  };
+
   // Fetch inventory for items by their SKUs (itemid)
   const fetchInventory = useCallback(async (itemSkus: string[]) => {
     if (itemSkus.length === 0) return;
     if (!isOnline) return; // Only fetch inventory when online
     
-    // Filter out SKUs we already have inventory for
-    const skusToFetch = itemSkus.filter(sku => !(sku in inventory));
-    if (skusToFetch.length === 0) return;
+    // Map SKUs to root SKUs for inventory lookup
+    // For -LSR and -PERS items, we check the root SKU's inventory
+    const skuToRootMap: Record<string, string> = {};
+    const rootSkus = new Set<string>();
+    
+    itemSkus.forEach(sku => {
+      const rootSku = getRootSku(sku);
+      skuToRootMap[sku] = rootSku;
+      rootSkus.add(rootSku);
+    });
+    
+    // Filter out root SKUs we already have inventory for
+    const rootSkusToFetch = Array.from(rootSkus).filter(rootSku => {
+      // Check if we have inventory for this root SKU or any of its variants
+      return !itemSkus.some(sku => {
+        const mappedRoot = getRootSku(sku);
+        return mappedRoot === rootSku && sku in inventory;
+      });
+    });
+    
+    if (rootSkusToFetch.length === 0) return;
 
-    console.log('Fetching inventory for SKUs:', skusToFetch);
+    console.log('Fetching inventory for root SKUs:', rootSkusToFetch);
+    console.log('SKU to root mapping:', skuToRootMap);
     setLoadingInventory(true);
     try {
-      const inventoryData = await netsuiteClient.getItemInventory(skusToFetch, 1);
+      const inventoryData = await netsuiteClient.getItemInventory(rootSkusToFetch, 1);
       console.log('Inventory data received:', inventoryData);
       const inventoryMap: Record<string, number> = {};
       
+      // Map inventory data to both root SKUs and their variants
       inventoryData.forEach((item: any) => {
         if (item.itemid && item.quantityavailable !== null && item.quantityavailable !== undefined) {
-          inventoryMap[item.itemid] = parseFloat(item.quantityavailable) || 0;
+          const quantity = parseFloat(item.quantityavailable) || 0;
+          const rootSku = item.itemid;
+          
+          // Store inventory for the root SKU
+          inventoryMap[rootSku] = quantity;
+          
+          // Also store for any variants that map to this root SKU
+          itemSkus.forEach(sku => {
+            if (getRootSku(sku) === rootSku) {
+              inventoryMap[sku] = quantity;
+            }
+          });
         }
       });
       
