@@ -18,6 +18,7 @@ const LEAD_SOURCES = [
 
 const ENGAGEMENT_LEVELS = ['Hot', 'Warm', 'Cold'] as const;
 const FOLLOW_UP_TYPES = ['Personal Touch', 'AI Sequence', 'Send to Rep'] as const;
+const SALES_CHANNELS = ['General Gift', 'Golf', 'Promotional'] as const;
 
 export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
   const [formData, setFormData] = useState({
@@ -27,6 +28,7 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
     email: '',
     phone: '',
     source: '',
+    salesChannel: '',
     engagementLevel: '',
     interestTimeline: '',
     productInterest: '',
@@ -88,6 +90,7 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
       email: '', 
       phone: '', 
       source: '', 
+      salesChannel: '',
       engagementLevel: '',
       interestTimeline: '',
       productInterest: '',
@@ -184,6 +187,24 @@ export default function LeadForm({ onSave, onCancel }: LeadFormProps) {
           {LEAD_SOURCES.map((source) => (
             <option key={source} value={source}>
               {source}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Sales Channel
+        </label>
+        <select
+          value={formData.salesChannel}
+          onChange={(e) => setFormData({ ...formData, salesChannel: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Select a sales channel...</option>
+          {SALES_CHANNELS.map((ch) => (
+            <option key={ch} value={ch}>
+              {ch}
             </option>
           ))}
         </select>

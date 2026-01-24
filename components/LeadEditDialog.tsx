@@ -21,6 +21,7 @@ const LEAD_SOURCES = [
 
 const ENGAGEMENT_LEVELS = ['Hot', 'Warm', 'Cold'] as const;
 const FOLLOW_UP_TYPES = ['Personal Touch', 'AI Sequence', 'Send to Rep'] as const;
+const SALES_CHANNELS = ['General Gift', 'Golf', 'Promotional'] as const;
 
 export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEditDialogProps) {
   const [formData, setFormData] = useState({
@@ -30,6 +31,7 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
     email: lead.email || '',
     phone: lead.phone || '',
     source: lead.source || '',
+    salesChannel: lead.sales_channel || '',
     engagementLevel: lead.engagement_level || '',
     interestTimeline: lead.interest_timeline || '',
     productInterest: lead.product_interest || '',
@@ -70,6 +72,7 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         source: formData.source || undefined,
+        sales_channel: formData.salesChannel ? (formData.salesChannel as 'General Gift' | 'Golf' | 'Promotional') : undefined,
         engagement_level: formData.engagementLevel ? (formData.engagementLevel as 'Hot' | 'Warm' | 'Cold') : undefined,
         interest_timeline: formData.interestTimeline || undefined,
         product_interest: formData.productInterest || undefined,
@@ -88,10 +91,9 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
 
   const handleCopy = () => {
     // Format as TSV (tab-separated values) row for Google Sheets
-    // Order matches: id, first_name, last_name, company, email, phone, source, engagement_level, 
+    // Order matches: id, first_name, last_name, company, email, phone, source, sales_channel, engagement_level, 
     //                interest_timeline, product_interest, competitor_info, notes, follow_up_type, 
     //                billing_zipcode, created_by, synced_at, created_at
-    // Note: send_to_rep is no longer included as "Send to Rep" is now part of follow_up_type
     const cleanTsvField = (field: any): string => {
       if (field === null || field === undefined) {
         return '';
@@ -110,6 +112,7 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
       formData.email || '',
       formData.phone || '',
       formData.source || '',
+      formData.salesChannel || '',
       formData.engagementLevel || '',
       formData.interestTimeline || '',
       formData.productInterest || '',
@@ -244,6 +247,25 @@ export default function LeadEditDialog({ lead, onSave, onClose, onCopy }: LeadEd
                 {LEAD_SOURCES.map((source) => (
                   <option key={source} value={source}>
                     {source}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sales Channel */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Sales Channel
+              </label>
+              <select
+                value={formData.salesChannel}
+                onChange={(e) => setFormData({ ...formData, salesChannel: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a sales channel...</option>
+                {SALES_CHANNELS.map((ch) => (
+                  <option key={ch} value={ch}>
+                    {ch}
                   </option>
                 ))}
               </select>
