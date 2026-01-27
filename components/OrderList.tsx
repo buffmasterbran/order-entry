@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { storage } from '@/lib/storage';
 import { Order, Customer, Contact, Address, Item } from '@/lib/supabase';
-import { X, Calendar, User, Package, Trash2, Edit2, Eye, EyeOff, Upload, Filter, DollarSign, Check } from 'lucide-react';
+import { X, Calendar, User, Package, Trash2, Edit2, Eye, EyeOff, Upload, Filter, DollarSign, Check, ExternalLink, Save } from 'lucide-react';
 
 interface OrderListProps {
   onClose: () => void;
@@ -24,6 +24,9 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
   const [pushingOrder, setPushingOrder] = useState(false);
   const [dateFilter, setDateFilter] = useState<{ start?: string; end?: string }>({});
   const [userFilter, setUserFilter] = useState<string>('');
+  const [itemSortBy, setItemSortBy] = useState<'none' | 'sku' | 'size' | 'color'>('sku');
+  const [editingNetSuiteId, setEditingNetSuiteId] = useState<string | null>(null);
+  const [editingNetSuiteIdValue, setEditingNetSuiteIdValue] = useState<string>('');
 
   useEffect(() => {
     loadData();
@@ -370,6 +373,64 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
     }
   };
 
+  const handleStartEditNetSuiteId = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent clicking the order card
+    setEditingNetSuiteId(order.id);
+    setEditingNetSuiteIdValue(order.netsuite_id || '');
+  };
+
+  const handleSaveNetSuiteId = async (order: Order, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Prevent clicking the order card
+    
+    try {
+      const updatedOrder: Order = {
+        ...order,
+        netsuite_id: editingNetSuiteIdValue.trim() || undefined,
+      };
+      
+      await storage.saveOrder(updatedOrder);
+      
+      // Update in Supabase if online
+      if (isOnline) {
+        try {
+          const response = await fetch('/api/supabase/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              order: {
+                ...updatedOrder,
+                synced_at: new Date().toISOString(),
+              },
+            }),
+          });
+          
+          if (!response.ok) {
+            console.warn('Failed to sync NetSuite ID to Supabase');
+          }
+        } catch (error) {
+          console.error('Error syncing NetSuite ID to Supabase:', error);
+        }
+      }
+      
+      // Update local state
+      setOrders(orders.map(o => o.id === order.id ? updatedOrder : o));
+      if (selectedOrder?.id === order.id) {
+        setSelectedOrder(updatedOrder);
+      }
+      
+      setEditingNetSuiteId(null);
+      setEditingNetSuiteIdValue('');
+    } catch (error) {
+      console.error('Error saving NetSuite ID:', error);
+      alert('Failed to save NetSuite ID');
+    }
+  };
+
+  const handleCancelEditNetSuiteId = () => {
+    setEditingNetSuiteId(null);
+    setEditingNetSuiteIdValue('');
+  };
+
   const handleSubmitOrder = async (order: Order, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent clicking the order card
     if (!confirm('Are you sure you want to submit this draft order?')) {
@@ -517,6 +578,7 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
             onClick={() => {
               setSelectedOrder(null);
               setShowFullCardNumber(false); // Reset reveal state when closing
+              setItemSortBy('sku'); // Reset sort to default (SKU) when closing
             }}
             className="p-2 hover:bg-gray-100 rounded-lg"
           >
@@ -576,29 +638,79 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
           )}
 
           <div>
-            <h3 className="font-semibold text-gray-700 mb-2">Items</h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold text-gray-700">Items</h3>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Sort by:</label>
+                <select
+                  value={itemSortBy}
+                  onChange={(e) => setItemSortBy(e.target.value as 'none' | 'sku' | 'size' | 'color')}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="none">None</option>
+                  <option value="sku">SKU</option>
+                  <option value="size">Size</option>
+                  <option value="color">Color</option>
+                </select>
+              </div>
+            </div>
             <div className="border rounded-lg divide-y">
-              {selectedOrder.items.map((orderItem, idx) => {
-                const item = getItem(orderItem.item_id);
-                const lineTotal = orderItem.quantity * (orderItem.price || 0);
-                return (
-                  <div key={idx} className="p-3 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{item?.displayname || `Item ${idx + 1}`}</p>
-                      {item?.itemid && <p className="text-sm text-gray-600">ID: {item.itemid}</p>}
-                      {orderItem.price && (
-                        <p className="text-sm text-gray-500">${orderItem.price.toFixed(2)} each</p>
-                      )}
+              {(() => {
+                // Sort items based on selected option
+                const sortedItems = [...selectedOrder.items].sort((a, b) => {
+                  if (itemSortBy === 'none') return 0;
+                  
+                  const itemA = getItem(a.item_id);
+                  const itemB = getItem(b.item_id);
+                  
+                  let valueA: string = '';
+                  let valueB: string = '';
+                  
+                  if (itemSortBy === 'sku') {
+                    valueA = itemA?.itemid || '';
+                    valueB = itemB?.itemid || '';
+                  } else if (itemSortBy === 'size') {
+                    // Prefer orderItem.size, fallback to item.size
+                    valueA = a.size || itemA?.size || '';
+                    valueB = b.size || itemB?.size || '';
+                  } else if (itemSortBy === 'color') {
+                    // Prefer orderItem.color, fallback to item.color
+                    valueA = a.color || itemA?.color || '';
+                    valueB = b.color || itemB?.color || '';
+                  }
+                  
+                  // Sort alphabetically (case-insensitive)
+                  return valueA.localeCompare(valueB, undefined, { sensitivity: 'base' });
+                });
+                
+                return sortedItems.map((orderItem, idx) => {
+                  const item = getItem(orderItem.item_id);
+                  const lineTotal = orderItem.quantity * (orderItem.price || 0);
+                  return (
+                    <div key={idx} className="p-3 flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{item?.displayname || `Item ${idx + 1}`}</p>
+                        {item?.itemid && <p className="text-sm text-gray-600">ID: {item.itemid}</p>}
+                        {orderItem.size && (
+                          <p className="text-sm text-blue-600">Size: {orderItem.size}</p>
+                        )}
+                        {orderItem.color && (
+                          <p className="text-sm text-purple-600">Color: {orderItem.color}</p>
+                        )}
+                        {orderItem.price && (
+                          <p className="text-sm text-gray-500">${orderItem.price.toFixed(2)} each</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">Qty: {orderItem.quantity}</p>
+                        <p className="font-semibold text-lg text-gray-900">
+                          ${lineTotal.toFixed(2)}
+                          </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Qty: {orderItem.quantity}</p>
-                      <p className="font-semibold text-lg text-gray-900">
-                        ${lineTotal.toFixed(2)}
-                        </p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
               <div className="p-3 bg-gray-50 flex justify-between items-center border-t-2 border-gray-300">
                 <p className="font-semibold text-lg text-gray-900">Order Total</p>
                 <p className="font-bold text-xl text-gray-900">
@@ -674,6 +786,33 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
           </div>
 
           <div>
+            <h3 className="font-semibold text-gray-700 mb-2">NetSuite Status</h3>
+            {selectedOrder.netsuite_id ? (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                  Pushed to NetSuite
+                </span>
+                <a
+                  href={`https://7913744.app.netsuite.com/app/accounting/transactions/salesord.nl?id=${selectedOrder.netsuite_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline text-sm font-medium flex items-center gap-1"
+                >
+                  View in NetSuite
+                  <Eye size={14} />
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                  Not Pushed to NetSuite
+                </span>
+                <span className="text-sm text-gray-600 italic">Needs to be entered manually</span>
+              </div>
+            )}
+          </div>
+
+          <div>
             <h3 className="font-semibold text-gray-700 mb-2">Created</h3>
             <p className="text-sm text-gray-600">{formatDate(selectedOrder.created_at)}</p>
           </div>
@@ -684,6 +823,7 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
             onClick={() => {
               setSelectedOrder(null);
               setShowFullCardNumber(false); // Reset reveal state when going back
+              setItemSortBy('sku'); // Reset sort to default (SKU) when going back
             }}
             className="flex-1 px-6 py-3 bg-gray-200 rounded-lg hover:bg-gray-300 font-medium"
           >
@@ -868,6 +1008,82 @@ export default function OrderList({ onClose, onSelectOrder, onEditOrder, isOnlin
                         <DollarSign size={14} />
                         <span>${orderTotal.toFixed(2)}</span>
                       </div>
+                    </div>
+                    {/* NetSuite Status */}
+                    <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      {editingNetSuiteId === order.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editingNetSuiteIdValue}
+                            onChange={(e) => setEditingNetSuiteIdValue(e.target.value)}
+                            placeholder="Enter NetSuite ID"
+                            className="px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveNetSuiteId(order);
+                              } else if (e.key === 'Escape') {
+                                handleCancelEditNetSuiteId();
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={(e) => handleSaveNetSuiteId(order, e)}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
+                            title="Save NetSuite ID"
+                          >
+                            <Save size={16} />
+                          </button>
+                          <button
+                            onClick={handleCancelEditNetSuiteId}
+                            className="p-1 text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                            title="Cancel"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {order.netsuite_id ? (
+                            <>
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                In NetSuite
+                              </span>
+                              <a
+                                href={`https://7913744.app.netsuite.com/app/accounting/transactions/salesord.nl?id=${order.netsuite_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {order.netsuite_id}
+                                <ExternalLink size={12} />
+                              </a>
+                              <button
+                                onClick={(e) => handleStartEditNetSuiteId(order, e)}
+                                className="p-1 text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                                title="Edit NetSuite ID"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Not in NetSuite
+                              </span>
+                              <button
+                                onClick={(e) => handleStartEditNetSuiteId(order, e)}
+                                className="px-2 py-0.5 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                title="Add NetSuite ID"
+                              >
+                                Add ID
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
